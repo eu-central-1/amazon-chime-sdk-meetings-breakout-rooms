@@ -26,12 +26,12 @@ const app = new cdk.App();
 
 new FrontEndStack(app, 'MeetingFrontEnd', { env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: 'us-east-1',
+    region: 'eu-central-1',
 }});
 
 new BackEndStack(app, 'MeetingBackEnd', { env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: 'us-east-1',
+    region: 'eu-central-1',
   }})
   
 app.synth();

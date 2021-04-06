@@ -5,6 +5,49 @@
 
 set -e
 
+die() { echo "$*" >&2; exit 2; }  # complain to STDERR and exit with error
+needs_arg() { if [ -z "$OPTARG" ]; then die "No arg for --$OPT option"; fi; }
+
+while getopts hdvp:-: OPT; do
+  # support long options: https://stackoverflow.com/a/28466267/519360
+  if [ "$OPT" = "-" ]; then   # long option: reformulate OPT and OPTARG
+    OPT="${OPTARG%%=*}"       # extract long option name
+    OPTARG="${OPTARG#$OPT}"   # extract long option argument (may be empty)
+    OPTARG="${OPTARG#=}"      # if long option argument, remove assigning `=`
+  fi
+  case "$OPT" in
+    h | help )     help=true ;;
+    d | debug )    debug=true ;;
+    v | verbose )  verbose=true ;;
+    p | profile )  needs_arg; profile="$OPTARG" ;;
+    ??* )          die "Illegal option --$OPT" ;;  # bad long option
+    ? )            exit 2 ;;  # bad short option (error reported via getopts)
+  esac
+done
+shift $((OPTIND-1)) # remove parsed options and args from $@ list
+
+if [ "$help" ]; then
+  echo "Usage: $0 [d--profile"
+  echo "Arguments:"
+  echo "   -v, --verbose      Show debug logs"
+  echo "   -d, --debug        Enable emission of additional debugging information"
+  echo "   -p, --profile      Use the indicated AWS profile "
+  echo
+  echo 'Example: ./deploy.sh -v --profile=example'
+  exit 1
+fi
+
+CDKOPTS=""
+if [ "$verbose" ]; then
+  CDKOPTS="$CDKOPTS --verbose"
+fi
+if [ "$debug" ]; then
+  CDKOPTS="$CDKOPTS --debug"
+fi
+if [ "$profile" ]; then
+  CDKOPTS="$CDKOPTS --profile $profile"
+fi
+
 if [ -f "cdk.context.json" ]; then
     echo ""
     echo "INFO: Removing cdk.context.json"
@@ -23,7 +66,7 @@ if [ ! -d "front-end-resources/react-meeting/build" ]; then
     echo ""
     echo "Creating front-end-resources/react-meeting/build directory"
     echo ""
-    mkdir front-end-resources/react-meeting/build
+    mkdir -p front-end-resources/react-meeting/build
 fi
 echo ""
 echo "Building CDK"
@@ -32,7 +75,7 @@ npm run build
 echo ""
 echo "Deploying Back End"
 echo ""
-cdk deploy MeetingBackEnd -O front-end-resources/react-meeting/src/cdk-outputs.json
+cdk deploy $CDKOPTS MeetingBackEnd -O front-end-resources/react-meeting/src/cdk-outputs.json
 echo ""
 echo "Building React App"
 echo ""
@@ -48,4 +91,4 @@ cd -
 echo ""
 echo "Deploying Front End"
 echo ""
-cdk deploy MeetingFrontEnd
+cdk deploy $CDKOPTS MeetingFrontEnd
